@@ -1,0 +1,23 @@
+{
+    "name": "scrapekit/scrapekit",
+    "description": "Web Scraping Framework",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "librevlad",
+            "email": "librevlad@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "ScrapeKit\\ScrapeKit\\": "./"
+        },
+        "files": [
+            "helpers.php"
+        ]
+    },
+    "require": {
+        "textalk/websocket": "^1.2"
+    }
+}
