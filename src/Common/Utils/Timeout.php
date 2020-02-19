@@ -13,21 +13,21 @@ class Timeout
     /**
      * @var int
      */
-    protected $miliseconds;
+    protected $milliseconds;
 
-    public function __construct(int $miliseconds)
+    public function __construct(int $milliseconds)
     {
 
-        $this->miliseconds = $miliseconds;
+        $this->milliseconds = $milliseconds;
     }
 
-    public function bump($miliseconds)
+    public function bump($milliseconds)
     {
-        $this->elapsed += $miliseconds;
+        $this->elapsed += $milliseconds;
     }
 
     public function exceeded()
     {
-        return $this->elapsed > $this->miliseconds;
+        return $this->elapsed > $this->milliseconds;
     }
 }
