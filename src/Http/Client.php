@@ -20,14 +20,17 @@ class Client
      * @var RequestCollection
      */
     public $requests;
+    public $options = [ 'guzzle' => [ 'concurrency' => 10 ] ];
     /**
      * @var array
      */
     private $promises = [];
 
-    public function __construct()
+    public function __construct($options = [])
     {
         $this->requests = new RequestCollection();
+
+        $this->options = array_replace($this->options, $options);
 
         return $this;
     }
@@ -71,11 +74,11 @@ class Client
         $stack->push(Middleware::httpErrors(), 'http_errors');
         $stack->push(Retry::factory());
 
-        $guzzle = new \GuzzleHttp\Client([ 'handler' => $stack ]);
+        $guzzle = new \GuzzleHttp\Client(array_replace($this->options[ 'guzzle' ], [ 'handler' => $stack ]));
 
         /** @var Request $request */
         foreach ($this->requests as $request) {
-            $promise =  $request->send($guzzle);
+            $promise = $request->send($guzzle);
 
             $this->promises [ $request->id() ] = $promise;
         }

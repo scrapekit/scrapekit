@@ -249,18 +249,18 @@ class Request
     //
 
     /**
-     * @param $input
+     * @param $url
      *
      * @return static
      * @throws Exception
      */
-    public static function make($input)
+    public static function make($url)
     {
-        if ($input instanceof static) {
-            return $input;
+        if ($url instanceof static) {
+            return $url;
         }
 
-        return new static($input);
+        return new static($url);
     }
 
     public function shouldRetry()
