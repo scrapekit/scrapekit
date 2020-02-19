@@ -42,6 +42,8 @@ ScrapeKit Browser uses *Chrome DevTools Protocol*.
 
 ScrapeKit HTTP uses Guzzle, exposing a simple and powerful API with on-demand complexity.
 
+### Basic Usage
+
 Make a single GET request and grab the response: 
 
 ```php
@@ -49,6 +51,16 @@ Make a single GET request and grab the response:
 $html = scrapekit()->http()->request('http://httpbin.org')->body();
 
 ```
+
+Define request as array and get headers:
+
+```php
+
+$html = scrapekit()->http()->request([ 'GET','http://httpbin.org', [ 'timeout' => 7 ]])->headers();
+
+```
+
+### Batch Requests and Async
 
 ## DomQL
 
