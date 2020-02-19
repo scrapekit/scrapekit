@@ -62,6 +62,8 @@ $html = scrapekit()->http()->request([ 'GET','http://httpbin.org', [ 'timeout' =
 
 ### Batch Requests and Async
 
+TODO
+
 ## DomQL
 
 TODO
