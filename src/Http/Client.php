@@ -2,69 +2,133 @@
 
 namespace ScrapeKit\ScrapeKit\Http;
 
-use Illuminate\Support\Arr;
+use GuzzleHttp\Handler\CurlMultiHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
+use ScrapeKit\ScrapeKit\Http\Guzzle\Middleware\Retry;
+use ScrapeKit\ScrapeKit\Http\Request;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCollection;
+
+use function GuzzleHttp\Promise\settle;
+use function GuzzleHttp\Promise\unwrap;
 
 class Client
 {
 
+    /**
+     * @var RequestCollection
+     */
+    public $requests;
+    /**
+     * @var array
+     */
+    private $promises = [];
+
     public function __construct()
     {
+        $this->requests = new RequestCollection();
+
+        return $this;
+    }
+
+    public function run()
+    {
+        return $this->runAsync()->wait();
     }
 
 
     /**
-     * @param RequestCollection $requests
+     * @param $requests
+     *
+     * @return $this
      */
-    protected function executeRequests($requests, $single = false)
+    public function addRequests($requests)
     {
-        $responses = $this->executeRequestsAsync($requests)->wait();
+        $this->requests = $this->requests->merge($requests);
+        $this->requests->each->client($this);
 
-        return $single ? $responses[ 0 ] : $responses;
+        return $this;
     }
 
-    protected function executeRequestsAsync($requests)
+    public function addRequest(Request $request)
     {
+        $this->addRequests([ $request ]);
 
-        $handler = new GuzzleHandler($requests);
-        $handler->start();
-
-        return $handler;
+        return $this;
     }
 
-    public function batch($requests)
-    {
-        if ($requests instanceof RequestCollection) {
-            return $this->executeRequests($requests);
-        }
-
-        foreach ($requests as &$r) {
-            $r = Request::wrap($r);
-        }
-
-        return $this->executeRequests(RequestCollection::wrap($requests));
-    }
-
-    public function request($method, $url = null, $options = [])
+    public function runAsync()
     {
 
-        if ($method && $url) {
-            return $this->executeRequests(RequestCollection::wrap([ new Request($method, $url, $options) ]), true);
+        $this->promises = [];
+
+        $stack = new HandlerStack();
+        $stack->setHandler(new CurlMultiHandler());
+        $stack->push(Middleware::redirect(), 'allow_redirects');
+        $stack->push(Middleware::cookies(), 'cookies');
+        $stack->push(Middleware::prepareBody(), 'prepare_body');
+        $stack->push(Middleware::httpErrors(), 'http_errors');
+        $stack->push(Retry::factory());
+
+        $guzzle = new \GuzzleHttp\Client([ 'handler' => $stack ]);
+
+        /** @var Request $request */
+        foreach ($this->requests as $request) {
+            $promise =  $request->send($guzzle);
+
+            $this->promises [ $request->id() ] = $promise;
         }
 
-        if ($method instanceof Request) {
-            return $this->executeRequests(RequestCollection::wrap([ $method ]), true);
-        }
-
-        // = request('http://httpbin.org')
-        if (is_string($method)) {
-            $method = [ 'GET', $method ];
-        }
-
-        if (is_array($method)) {
-            return $this->executeRequests(RequestCollection::wrap([ Request::wrap($method) ]), true);
-        }
-
-        throw new \InvalidArgumentException('Could not create request(s) from the input provided');
+        return $this;
     }
+
+    public function wait($errors = 1)
+    {
+        if ($errors) {
+            unwrap($this->promises);
+        } else {
+            settle($this->promises)->wait();
+        }
+
+        return $this->requests->map->response()->toArray();
+    }
+
+
+    //
+    //    public function batch($requests)
+    //    {
+    //        if ($requests instanceof RequestCollection) {
+    //            return $this->executeRequests($requests);
+    //        }
+    //
+    //        foreach ($requests as &$r) {
+    //            $r = Request::wrap($r);
+    //        }
+    //
+    //        return $this->executeRequests(RequestCollection::wrap($requests));
+    //    }
+    //
+    //    public function request($method, $url = null, $options = [])
+    //    {
+    //
+    //        if ($method && $url) {
+    //            return $this->executeRequests(RequestCollection::wrap([ new Request($method, $url, $options) ]), true);
+    //        }
+    //
+    //        if ($method instanceof Request) {
+    //            return $this->executeRequests(RequestCollection::wrap([ $method ]), true);
+    //        }
+    //
+    //        // = request('http://httpbin.org')
+    //        if (is_string($method)) {
+    //            $method = [ 'GET', $method ];
+    //        }
+    //
+    //        if (is_array($method)) {
+    //            return $this->executeRequests(RequestCollection::wrap([ Request::wrap($method) ]), true);
+    //        }
+    //
+    //        throw new \InvalidArgumentException('Could not create request(s) from the input provided');
+    //    }
 }

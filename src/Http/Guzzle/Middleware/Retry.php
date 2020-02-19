@@ -24,6 +24,8 @@ class Retry
         'scrapekit_request' => null,
     ];
 
+    private $failTriggered = false;
+
     public static function factory(array $defaultOptions = []): Closure
     {
         return function (callable $handler) use ($defaultOptions) {
@@ -51,6 +53,7 @@ class Retry
         /** @var callable $next */
         $next = $this->nextHandler;
 
+
         return $next($request, $options)
             ->then(
                 $this->onFulfilled($request, $options),
@@ -66,40 +69,21 @@ class Retry
                 return $response;
             }
 
+            /** @var Request $request */
             $request = $options[ 'scrapekit_request' ];
+            $request->callbacks()->trigger(Request\RequestCallbacks::BODY_LOADED, $response);
 
-            $request->setResponse(new Response($response));
-
-            //            dump( 'on fulfilled 2' );
-            if ($valid = $request->__validate()) {
-                $request->state()->set(State::SUCCESS);
-                $request->callbacks()->trigger('success');
-//                dump( $request->response()->body() );
-                dump('valid');
-
-                $request->tries()->increment();
-
-                return $response;
-            } else {
-                dump('invalid');
-                //                dd( 'invalid' );
+            if (! $request->valid()) {
+                $this->failTriggered = true;
+                //                dump('rejecting');
                 $rejected = $this->onRejected($guzzleRequest, $options);
                 $reason   = new RequestException('Invalid response', $guzzleRequest, $response);
                 $rejected($reason);
 
-                //                dump( 'after rejected' );
-
                 return rejection_for($reason);
             }
 
-            //            dd( 1 );
-
-
-            //            dd( $this->request->id(), $request, $options );
-
-            //            return $this->shouldRetryHttpResponse( $options, $response )
-            //                ? $this->doRetry( $request, $options, $response )
-            //                : $this->returnResponse( $options, $response );
+            return $response;
         };
     }
 
@@ -110,44 +94,20 @@ class Retry
              * @var $request Request
              */
             $request = $options[ 'scrapekit_request' ];
-            $request->tries()->increment();
-            dump($request->id());
-            $request->state()->set(State::FAIL);
-            $request->callbacks()->trigger('fail');
+            //            dump( $request->id(), $this->failTriggered );
+            if (! $this->failTriggered) {
+                $request->callbacks()->trigger('fail', $reason);
+            }
 
             $message = $reason->getMessage();
             if (strpos($message, 'Operation timed out') !== false) {
                 $request->callbacks()->trigger('timeout', $message);
             }
 
-
-            if ($request->tries()->exceeded()) {
-                //                dump( 'tries exceeded' );
-                $request->state()->set(State::LAST_FAIL);
-                $request->callbacks()->trigger('last_fail');
-            } else {
-                //                dump( 'tries not exceeded' );
-
-                // restart the request
+            if ($request->shouldRetry()) {
                 return $this($guzzleRequest, $options);
             }
 
-
-            //            dd( '2' );
-            //            // If was bad response exception, test if we retry based on the response headers
-            //            if ($reason instanceof BadResponseException) {
-            //                if ($this->shouldRetryHttpResponse($options, $reason->getResponse())) {
-            //                    return $this->doRetry($request, $options, $reason->getResponse());
-            //                }
-            //                // If this was a connection exception, test to see if we should retry based on connect timeout rules
-            //            } elseif ($reason instanceof ConnectException) {
-            //                // If was another type of exception, test if we should retry based on timeout rules
-            //                if ($this->shouldRetryConnectException($options)) {
-            //                    return $this->doRetry($request, $options);
-            //                }
-            //            }
-            //
-            //            // If made it here, then we have decided not to retry the request
             return rejection_for($reason);
         };
     }

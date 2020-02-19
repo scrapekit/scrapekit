@@ -25,6 +25,15 @@ class RequestCallbacks
         'timeout'               => null,
     ];
 
+    public const HEADERS_LOADED = 'headers_loaded';
+    public const BODY_PARTIALLY_LOADED = 'body_partially_loaded';
+    public const BODY_LOADED = 'body_loaded';
+    public const SUCCESS = 'success';
+    public const FAIL = 'fail';
+    public const LAST_FAIL = 'last_fail';
+    public const TIMEOUT = 'timeout';
+
+
     /**
      * RequestCallbacks constructor.
      *

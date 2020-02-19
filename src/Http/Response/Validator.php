@@ -21,6 +21,13 @@ class Validator
         };
     }
 
+    public static function isOk()
+    {
+        return function (Request $request) {
+            return $request->response()->isOk();
+        };
+    }
+
     public static function status($input)
     {
         return function (Request $request) use ($input) {
