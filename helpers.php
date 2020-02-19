@@ -1,12 +1,17 @@
 <?php
 
-use ScrapeKit\ScrapeKit\Chrome\Chrome;
-use ScrapeKit\ScrapeKit\Utils\Json;
-
-function chrome( $url = 'http://localhost:9222' ) {
-    return new Chrome( $url );
-}
+use ScrapeKit\ScrapeKit\Common\Utils\BlackBox;
+use ScrapeKit\ScrapeKit\Common\Utils\Json;
+use ScrapeKit\ScrapeKit\ScrapeKit;
 
 function json() {
     return new Json();
+}
+
+function scrapekit() {
+    return new ScrapeKit;
+}
+
+function blackbox( callable $callback ) {
+    return BlackBox::try( $callback );
 }

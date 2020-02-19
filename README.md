@@ -14,7 +14,7 @@ ScrapeKit Browser uses *Chrome DevTools Protocol*.
 
 ```php
 
-    $tab = chrome('http://localhost:9222')->tabs()->new();
+    $tab = scrapekit()->chrome('http://localhost:9222')->tabs()->new();
 
     $tab->geo( 45, 21 )
         ->navigate( 'https://mylocation.org/' )
@@ -40,7 +40,15 @@ ScrapeKit Browser uses *Chrome DevTools Protocol*.
 
 ## HTTP Automation
 
-TODO
+ScrapeKit HTTP uses Guzzle, exposing a simple and powerful API with on-demand complexity.
+
+Make a single GET request and grab the response: 
+
+```php
+
+$html = scrapekit()->http()->request('http://httpbin.org')->body();
+
+```
 
 ## DomQL
 

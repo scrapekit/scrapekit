@@ -1,10 +1,9 @@
 <?php
 
-
 namespace ScrapeKit\ScrapeKit\Chrome\Utils;
 
-
-class Box {
+class Box
+{
 
     /**
      * @var Point
@@ -23,39 +22,41 @@ class Box {
      */
     public $bottomLeft;
 
-    public function __construct( Point $topLeft, Point $topRight, Point $bottomRight, Point $bottomLeft ) {
+    public function __construct(Point $topLeft, Point $topRight, Point $bottomRight, Point $bottomLeft)
+    {
         $this->topLeft     = $topLeft;
         $this->topRight    = $topRight;
         $this->bottomRight = $bottomRight;
         $this->bottomLeft  = $bottomLeft;
     }
 
-    public static function fromFlatArray( $array ) {
+    public static function fromFlatArray($array)
+    {
 
         return new static(
-            new Point( $array[ 0 ], $array[ 1 ] ),
-            new Point( $array[ 2 ], $array[ 3 ] ),
-            new Point( $array[ 4 ], $array[ 5 ] ),
-            new Point( $array[ 6 ], $array[ 7 ] )
+            new Point($array[ 0 ], $array[ 1 ]),
+            new Point($array[ 2 ], $array[ 3 ]),
+            new Point($array[ 4 ], $array[ 5 ]),
+            new Point($array[ 6 ], $array[ 7 ])
         );
-
     }
 
-    public function width() {
+    public function width()
+    {
         return $this->topRight->x - $this->topLeft->x;
     }
 
-    public function height() {
+    public function height()
+    {
         return $this->bottomLeft->y - $this->topLeft->y;
     }
 
-    public function center() {
+    public function center()
+    {
 
         return new Point(
-            ceil( $this->topLeft->x + $this->width() / 2 ),
-            ceil( $this->topLeft->y + $this->height() / 2 )
+            ceil($this->topLeft->x + $this->width() / 2),
+            ceil($this->topLeft->y + $this->height() / 2)
         );
-
     }
-
 }
