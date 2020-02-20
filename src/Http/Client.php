@@ -5,9 +5,7 @@ namespace ScrapeKit\ScrapeKit\Http;
 use GuzzleHttp\Handler\CurlMultiHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
-use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use ScrapeKit\ScrapeKit\Http\Guzzle\Middleware\Retry;
-use ScrapeKit\ScrapeKit\Http\Request;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCollection;
 
 use function GuzzleHttp\Promise\settle;
@@ -26,13 +24,15 @@ class Client
      */
     private $promises = [];
 
+    /**
+     * Client constructor.
+     *
+     * @param array $options
+     */
     public function __construct($options = [])
     {
         $this->requests = new RequestCollection();
-
-        $this->options = array_replace($this->options, $options);
-
-        return $this;
+        $this->options  = array_replace($this->options, $options);
     }
 
     public function run()

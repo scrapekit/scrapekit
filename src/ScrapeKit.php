@@ -8,7 +8,12 @@ use ScrapeKit\ScrapeKit\Http\Client;
 class ScrapeKit
 {
 
-    public function http($options = null)
+    /**
+     * @param null $options
+     *
+     * @return Client
+     */
+    public function http($options = [])
     {
         return new Client($options);
     }

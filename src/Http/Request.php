@@ -77,11 +77,14 @@ class Request
      *
      * @throws Exception
      */
-    public function __construct($url)
+    public function __construct($url = null)
     {
 
-        $this->id  = Uuid::uuid4()->toString();
-        $this->url = $url;
+        $this->id = Uuid::uuid4()->toString();
+
+        if ($url) {
+            $this->url = $url;
+        }
 
         $this->callbacks = new RequestCallbacks($this);
         $this->tries     = new RequestTries();
@@ -96,6 +99,13 @@ class Request
 
 
         $this->registerCallbacks();
+
+        $this->configure();
+    }
+
+    public function configure()
+    {
+        return $this;
     }
 
     public function tries($max = null)
@@ -213,42 +223,6 @@ class Request
     }
 
     /**
-     * @param $options
-     */
-    //    protected function applyOptions( $options ): void {
-    //
-    //        $options = new RequestOptions( $options );
-    //
-    //        $additionalGuzzleOptions = $options->get( 'guzzle', [] );
-    //        $this->guzzleOptions     = array_replace( $this->guzzleOptions, $additionalGuzzleOptions );
-    //
-    //        // Timeout
-    //
-    //        // Register callbacks
-    //        $on = $options->get( 'on', [] );
-    //        foreach ( $on as $name => $callbacks ) {
-    //            $this->callbacks()->on( $name, $callbacks );
-    //        }
-    //
-    //        // Validator
-    //        if ( $validator = $options->get( 'validator' ) ) {
-    //            if ( is_array( $validator ) ) {
-    //                $validator = Validator::all( $validator );
-    //            }
-    //            $this->validateUsing( $validator );
-    //        }
-    //
-    //        // Parser
-    //        $this->parserClass = $options->get( 'parser' );
-    //
-    //        // Misc
-    //        if ( $maxTries = $options->get( 'max_tries', null ) ) {
-    //            $this->tries()->max( $maxTries );
-    //        }
-    //    }
-    //
-
-    /**
      * @param $url
      *
      * @return static
@@ -353,7 +327,8 @@ class Request
                 }
             })
             ->onLastFail(function (Request $request, $reason) {
-                dump('last fail triggered');
+                dump('last fail triggered', $this->url());
+                dd($request->response->body());
             })
             ->onHeaders(function (Request $request, $guzzleResponse) {
                 dump('headers loaded');
