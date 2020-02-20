@@ -3,6 +3,7 @@
 namespace ScrapeKit\ScrapeKit\Http;
 
 use Illuminate\Support\Traits\Macroable;
+use ScrapeKit\ScrapeKit\Http\Response\Parser;
 
 use function GuzzleHttp\Psr7\stream_for;
 
@@ -14,27 +15,49 @@ class Response
      * @var \GuzzleHttp\Psr7\Response
      */
     public $guzzleResponse;
+    /**
+     * @var Request
+     */
+    public $request;
+    /**
+     * @var Headers
+     */
     protected $headers;
 
+    /**
+     * @var string
+     */
     protected $body;
 
+    /**
+     * @var mixed
+     */
     protected $parser;
 
-    public function __construct($guzzleResponse)
+    public function __construct($guzzleResponse, Request $request, $parserClass = null)
     {
         $this->guzzleResponse = $guzzleResponse;
         $this->headers();
+        $this->request = $request;
+
+        if ($parserClass) {
+            $this->parser = new $parserClass($this);
+        }
     }
 
     public function parse()
     {
-        return $this->parser;
+
+        if ($this->parser instanceof Parser) {
+            return $this->parser;
+        }
+
+        throw new \Exception('Response parser is not defined');
     }
 
-    public function setParser($parser)
-    {
-        $this->parser = $parser;
-    }
+    //    public function setParser( $parser ) {
+    //        $this->parser = $parser;
+    //    }
 
     public function body($newBody = null)
     {

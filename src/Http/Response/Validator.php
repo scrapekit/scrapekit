@@ -3,9 +3,22 @@
 namespace ScrapeKit\ScrapeKit\Http\Response;
 
 use ScrapeKit\ScrapeKit\Http\Request;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
 
 class Validator
 {
+
+    public static function useParser($parserClass)
+    {
+
+        if (! ( ( new \ReflectionClass($parserClass) )->implementsInterface(ResponseValidationInterface::class) )) {
+            throw new \Exception($parserClass . ' can not validate responses');
+        }
+
+        return function (Request $request) use ($parserClass) {
+            ( new $parserClass($request->response()) )->validate();
+        };
+    }
 
     public static function isHtml()
     {

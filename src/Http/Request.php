@@ -17,6 +17,8 @@ use ScrapeKit\ScrapeKit\Http\Request\Plugin;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCallbacks;
 use ScrapeKit\ScrapeKit\Http\Request\RequestTries;
 use ScrapeKit\ScrapeKit\Http\Request\State;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ProvidesValidation;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
 use ScrapeKit\ScrapeKit\Http\Response\Validator;
 
 use function GuzzleHttp\Promise\rejection_for;
@@ -85,6 +87,11 @@ class Request
     protected $plugins = [];
 
     /**
+     * @var string
+     */
+    protected $parserClass;
+
+    /**
      * Request constructor.
      *
      * @param $url
@@ -130,6 +137,13 @@ class Request
         foreach ($plugins as $plugin) {
             $this->withPlugin($plugin);
         }
+
+        return $this;
+    }
+
+    public function parseResponseWith($parserClass)
+    {
+        $this->parserClass = $parserClass;
 
         return $this;
     }
@@ -189,10 +203,10 @@ class Request
     public function send(\GuzzleHttp\Client $guzzle)
     {
 
-        $onRejected = function ($reason) use ($guzzle) {
-            //            if ( ! $this->failTriggered ) {
-            $this->callbacks()->trigger('fail', $reason);
-            //            }
+        $onRejected = function ($reason, $trigger = true) use ($guzzle) {
+            if ($trigger) {
+                $this->callbacks()->trigger('fail', $reason);
+            }
 
             $message = $reason->getMessage();
             if (strpos($message, 'Operation timed out') !== false) {
@@ -212,7 +226,7 @@ class Request
 
                                     if (! $this->valid()) {
                                         $reason = new InvalidResponseException('Invalid response');
-                                        $onRejected($reason);
+                                        $onRejected($reason, false);
 
                                         return rejection_for($reason);
                                     }
@@ -348,6 +362,11 @@ class Request
 
     public function valid()
     {
+
+        if ($this->response() && $this->parserClass && $this->response()->parse() instanceof ResponseValidationInterface) {
+            return $this->response()->parse()->validate();
+        }
+
         return $this->response() && $this->validator()->fire($this);
     }
 
@@ -404,12 +423,12 @@ class Request
     {
         $this
             ->onLoad(function (Request $request, ResponseInterface $response) {
-                $this->response(new Response($response));
+                $this->response(new Response($response, $this, $this->parserClass));
                 if ($this->valid()) {
-                    //                    dump( $this->url() . ' ' . 'valid' );
+                    dump($this->url() . ' ' . 'valid');
                     $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
                 } else {
-                    //                    dump( $this->url() . ' ' . 'invalid' );
+                    dump($this->url() . ' ' . 'invalid');
                     $this->callbacks()->trigger(RequestCallbacks::FAIL, new Exception('Invalid body'));
                 }
             })
@@ -417,7 +436,7 @@ class Request
                 dump($this->url() . ' ' . 'Partial Load - ' . $message);
             })
             ->onTimeout(function (Request $request, $message) {
-                //                dump( $this->url() . ' ' . 'Timeout - ' . $message );
+                //                                dump( $this->url() . ' ' . 'Timeout - ' . $message );
             })
             ->onSuccess(function (Request $request) {
                 dump($this->url() . ' ' . 'SUCCESS');
@@ -425,7 +444,7 @@ class Request
             })
             ->onFail(function (Request $request, $reason) {
                 $this->tries()->increment();
-                //                dump( $this->url() . ' ' . 'fail triggered - ' . $reason->getMessage() );
+                dump($this->url() . ' ' . 'fail triggered - ' . $reason->getMessage());
 
                 if ($this->tries()->exceeded()) {
                     $this->callbacks()->trigger(RequestCallbacks::LAST_FAIL, $reason);

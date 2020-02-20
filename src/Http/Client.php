@@ -20,7 +20,7 @@ class Client
      * @var RequestCollection
      */
     public $requests;
-    public $options = [ 'guzzle' => [ 'concurrency' => 10 ] ];
+    public $options = [];
     public $threads = 10;
     /**
      * @var array
@@ -36,6 +36,15 @@ class Client
     {
         $this->requests = new RequestCollection();
         $this->options  = array_replace($this->options, $options);
+    }
+
+    public function threads($num = null)
+    {
+        if ($num !== null) {
+            $this->threads = $num;
+        }
+
+        return $this->threads;
     }
 
     public function run()
