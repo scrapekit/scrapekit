@@ -1,6 +1,6 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Responses\Response;
+namespace ScrapeKit\ScrapeKit\Http\Responses;
 
 use Illuminate\Support\Traits\ForwardsCalls;
 use Illuminate\Support\Traits\Macroable;

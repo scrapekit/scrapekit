@@ -2,7 +2,7 @@
 
 namespace ScrapeKit\ScrapeKit\Http\Responses\Parsers;
 
-use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
+use ScrapeKit\ScrapeKit\Http\Responses\Response;
 
 abstract class Parser
 {
