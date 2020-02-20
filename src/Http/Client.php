@@ -2,16 +2,10 @@
 
 namespace ScrapeKit\ScrapeKit\Http;
 
-use GuzzleHttp\Handler\CurlMultiHandler;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Middleware;
+use Exception;
 use GuzzleHttp\Promise\CancellationException;
-use GuzzleHttp\Promise\EachPromise;
-use ScrapeKit\ScrapeKit\Http\Guzzle\Middleware\Retry;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCollection;
-
-use function GuzzleHttp\Promise\settle;
-use function GuzzleHttp\Promise\unwrap;
+use Throwable;
 
 class Client
 {
@@ -25,7 +19,8 @@ class Client
     /**
      * @var array
      */
-    private $promises = [];
+    protected $promises = [];
+    protected $promise;
 
     /**
      * Client constructor.
@@ -75,7 +70,7 @@ class Client
         return $req->response();
     }
 
-    protected function handle()
+    public function run()
     {
 
         $guzzle = new \GuzzleHttp\Client([
@@ -91,9 +86,19 @@ class Client
                 }
             };
 
-            $this->prom = ( new \GuzzleHttp\Promise\EachPromise($fnc(), [ 'concurrency' => $this->threads, ]) )->promise();
+            $this->promise = ( new \GuzzleHttp\Promise\EachPromise($fnc(), [ 'concurrency' => $this->threads, ]) )->promise();
+            $this->promise->wait();
+        }
 
-            $this->prom->wait();
+        return $this;
+    }
+
+    public function stop($e)
+    {
+
+        try {
+            $this->promise->reject($e);
+        } catch (CancellationException $ee) {
         }
 
         return $this;
@@ -101,20 +106,7 @@ class Client
 
     public function throw($e)
     {
-        try {
-            $this->prom->reject($e);
-        } catch (CancellationException $ee) {
-        }
-        throw $e;
+
+        $this->stop($e);
     }
-    //
-    //    public function wait( $errors = 0 ) {
-    //        if ( $errors ) {
-    //            unwrap( $this->promises );
-    //        } else {
-    //            settle( $this->promises )->wait();
-    //        }
-    //
-    //        return $this->requests->map->response()->toArray();
-    //    }
 }

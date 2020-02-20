@@ -10,7 +10,6 @@ class Validator
 
     public static function useParser($parserClass)
     {
-
         if (! ( ( new \ReflectionClass($parserClass) )->implementsInterface(ResponseValidationInterface::class) )) {
             throw new \Exception($parserClass . ' can not validate responses');
         }

@@ -5,6 +5,7 @@ namespace ScrapeKit\ScrapeKit\Http\Response;
 use ScrapeKit\ScrapeKit\Http\Response;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\HtmlParser;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\JsonParser;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\RegexParser;
 
 abstract class Parser
 {
@@ -42,5 +43,10 @@ abstract class Parser
     public static function html()
     {
         return HtmlParser::class;
+    }
+
+    public static function regex()
+    {
+        return RegexParser::class;
     }
 }
