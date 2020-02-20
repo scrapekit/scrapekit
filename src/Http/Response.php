@@ -45,6 +45,11 @@ class Response
         }
     }
 
+    public function toPsr()
+    {
+        return $this->guzzleResponse;
+    }
+
     public function parse()
     {
 
@@ -55,19 +60,14 @@ class Response
         throw new \Exception('Response parser is not defined');
     }
 
-    //    public function setParser( $parser ) {
-    //        $this->parser = $parser;
-    //    }
-
     public function body($newBody = null)
     {
-
         if ($newBody !== null) {
-            $this->guzzleResponse = $this->guzzleResponse->withBody(stream_for($newBody));
+            $this->guzzleResponse = $this->toPsr()->withBody(stream_for($newBody));
         }
 
         if (! $this->body) {
-            $this->body = $this->guzzleResponse->getBody()->getContents();
+            $this->body = $this->toPsr()->getBody()->getContents();
         }
 
         return $this->body;
@@ -75,14 +75,14 @@ class Response
 
     public function headers()
     {
-        $this->headers = new Headers($this->guzzleResponse->getHeaders());
+        $this->headers = new Headers($this->toPsr()->getHeaders());
 
         return $this->headers;
     }
 
     public function status()
     {
-        return $this->guzzleResponse->getStatusCode();
+        return $this->toPsr()->getStatusCode();
     }
 
     public function isOk()
