@@ -418,26 +418,26 @@ class Request
             ->onLoad(function (Request $request, ResponseInterface $response) {
                 $this->response(new Response($response, $this, $this->parserClass));
                 if ($this->valid()) {
-                    dump($this->url() . ' ' . 'valid');
+                    //                    dump($this->url() . ' ' . 'valid');
                     $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
                 } else {
-                    dump($this->url() . ' ' . 'invalid');
+                    //                    dump($this->url() . ' ' . 'invalid');
                     $this->callbacks()->trigger(RequestCallbacks::FAIL, new InvalidResponseException('Validation failed', $this));
                 }
             })
             ->onPartialLoad(function (Request $request, $message) {
-                dump($this->url() . ' ' . 'Partial Load - ' . $message);
+                //                dump($this->url() . ' ' . 'Partial Load - ' . $message);
             })
             ->onTimeout(function (Request $request, $message) {
-                dump($this->url() . ' ' . 'Timeout - ' . $message);
+                //                dump($this->url() . ' ' . 'Timeout - ' . $message);
             })
             ->onSuccess(function (Request $request) {
-                dump($this->url() . ' ' . 'SUCCESS');
+                //                dump($this->url() . ' ' . 'SUCCESS');
                 $this->state()->set(State::FINISHED);
             })
             ->onFail(function (Request $request, $reason) {
                 $this->tries()->increment();
-                dump($this->url() . ' ' . 'fail triggered - ' . $reason->getMessage());
+                //                dump($this->url() . ' ' . 'fail triggered - ' . $reason->getMessage());
 
                 if ($this->tries()->exceeded()) {
                     $this->callbacks()->trigger(RequestCallbacks::LAST_FAIL, $reason);
