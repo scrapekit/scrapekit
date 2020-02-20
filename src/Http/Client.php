@@ -8,7 +8,7 @@ use GuzzleHttp\Promise\EachPromise;
 use GuzzleHttp\Promise\Promise;
 use ScrapeKit\ScrapeKit\Http\Requests\Collection;
 use ScrapeKit\ScrapeKit\Http\Requests\Request;
-use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
+use ScrapeKit\ScrapeKit\Http\Responses\Response;
 
 class Client
 {

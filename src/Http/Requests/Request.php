@@ -22,7 +22,7 @@ use ScrapeKit\ScrapeKit\Http\Requests\Callbacks\RequestCallbacks;
 use ScrapeKit\ScrapeKit\Http\Requests\Concerns\SetsCallbacks;
 use ScrapeKit\ScrapeKit\Http\Requests\Plugins\Plugin;
 use ScrapeKit\ScrapeKit\Http\Responses\Parsers\Concerns\ResponseValidationInterface;
-use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
+use ScrapeKit\ScrapeKit\Http\Responses\Response;
 use ScrapeKit\ScrapeKit\Http\Responses\Validator;
 
 use function GuzzleHttp\Promise\rejection_for;
