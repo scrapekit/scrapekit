@@ -14,8 +14,11 @@ class RequestCollection extends Collection
      */
     protected $items = [];
 
-    public function find($id)
+    public function unprocessed()
     {
-        return $this->firstWhere('id', $id);
+
+        return $this->filter(function ($request) {
+            return $request->state()->is(State::NEW);
+        });
     }
 }

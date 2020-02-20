@@ -5,6 +5,8 @@ namespace ScrapeKit\ScrapeKit\Http;
 use GuzzleHttp\Handler\CurlMultiHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use GuzzleHttp\Promise\CancellationException;
+use GuzzleHttp\Promise\EachPromise;
 use ScrapeKit\ScrapeKit\Http\Guzzle\Middleware\Retry;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCollection;
 
@@ -19,6 +21,7 @@ class Client
      */
     public $requests;
     public $options = [ 'guzzle' => [ 'concurrency' => 10 ] ];
+    public $threads = 10;
     /**
      * @var array
      */
@@ -37,9 +40,9 @@ class Client
 
     public function run()
     {
-        return $this->runAsync()->wait();
+        //        return $this->runAsync()->wait();
+        return $this->handle();
     }
-
 
     /**
      * @param $requests
@@ -61,32 +64,79 @@ class Client
         return $this;
     }
 
-    public function runAsync()
+    //    public function runAsync() {
+    //
+    //        $this->promises = [];
+    //
+    //        $stack = new HandlerStack();
+    //        $stack->setHandler( new CurlMultiHandler() );
+    //        $stack->push( Middleware::redirect(), 'allow_redirects' );
+    //        $stack->push( Middleware::cookies(), 'cookies' );
+    //        $stack->push( Middleware::prepareBody(), 'prepare_body' );
+    //        $stack->push( Middleware::httpErrors(), 'http_errors' );
+    //        $stack->push( Retry::factory() );
+    //
+    //        //        $guzzle = new \GuzzleHttp\Client( array_replace( $this->options[ 'guzzle' ], [ 'handler' => $stack ] ) );
+    //        $guzzle = new \GuzzleHttp\Client( [
+    //            'handler'     => $stack,
+    //            'expect'      => false,
+    //            'http_errors' => false,
+    //        ] );
+    //
+    //        /** @var Request $request */
+    //        foreach ( $this->requests as $request ) {
+    //            $promise                           = $request->send( $guzzle );
+    //            $this->promises [ $request->id() ] = $promise;
+    //        }
+    //
+    //        return $this;
+    //    }
+
+    protected function handle()
     {
+        //        $stack = new HandlerStack();
+        //        $stack->setHandler( new CurlMultiHandler() );
+        //        $stack->push( Middleware::redirect(), 'allow_redirects' );
+        //        $stack->push( Middleware::cookies(), 'cookies' );
+        //        $stack->push( Middleware::prepareBody(), 'prepare_body' );
+        //        $stack->push( Middleware::httpErrors(), 'http_errors' );
+        //        $stack->push( Retry::factory() );
 
-        $this->promises = [];
+        $guzzle = new \GuzzleHttp\Client([
+            //            'handler'     => $stack,
+            'expect'      => false,
+            'http_errors' => false,
+        ]);
 
-        $stack = new HandlerStack();
-        $stack->setHandler(new CurlMultiHandler());
-        $stack->push(Middleware::redirect(), 'allow_redirects');
-        $stack->push(Middleware::cookies(), 'cookies');
-        $stack->push(Middleware::prepareBody(), 'prepare_body');
-        $stack->push(Middleware::httpErrors(), 'http_errors');
-        $stack->push(Retry::factory());
+        while ($count = $this->requests->unprocessed()->count()) {
+            dump('Unprocessed requests: ' . $count);
+            $fnc = function () use ($guzzle) {
+                while ($r = $this->requests->unprocessed()->first()) {
+                    //                    dump( 'Sending request '.$r->id() );
+                    yield $r->send($guzzle);
+                }
+            };
 
-        $guzzle = new \GuzzleHttp\Client(array_replace($this->options[ 'guzzle' ], [ 'handler' => $stack ]));
+            //            $this->prom = ( new \ScrapeKit\ScrapeKit\Http\Guzzle\EachPromise( $fnc(), [ 'concurrency' => $this->threads, ] ) )->promise();
+            $this->prom = ( new \GuzzleHttp\Promise\EachPromise($fnc(), [ 'concurrency' => $this->threads, ]) )->promise();
 
-        /** @var Request $request */
-        foreach ($this->requests as $request) {
-            $promise = $request->send($guzzle);
-
-            $this->promises [ $request->id() ] = $promise;
+            $this->prom->wait();
         }
 
         return $this;
     }
 
-    public function wait($errors = 1)
+    public function throw($e)
+    {
+        try {
+            //            $this->prom->cancel();
+            $this->prom->reject($e);
+        } catch (CancellationException $ee) {
+        }
+        throw $e;
+    }
+
+    public function wait($errors = 0)
     {
         if ($errors) {
             unwrap($this->promises);

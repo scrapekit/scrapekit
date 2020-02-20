@@ -56,10 +56,19 @@ class RequestCallbacks
     public function on(string $name, $handler)
     {
 
-        $handlers = Arr::wrap($handler);
-        foreach ($handlers as $item) {
-            $this->callbacks[ $name ]->push(new Callback($item));
-        }
+
+        $newHandler = function (...$args) use ($handler) {
+            try {
+                $handler(...$args);
+            } catch (\Exception $e) {
+                $this->request->client()->throw($e);
+            } catch (\Throwable $e) {
+                $this->request->client()->throw($e);
+            }
+        };
+
+
+        $this->callbacks[ $name ]->push(new Callback($newHandler));
 
         return $this;
     }

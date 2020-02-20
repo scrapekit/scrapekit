@@ -3,14 +3,23 @@
 namespace ScrapeKit\ScrapeKit\Http;
 
 use Exception;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Promise\Promise;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Illuminate\Support\Traits\Macroable;
 use Psr\Http\Message\ResponseInterface;
 use Ramsey\Uuid\Uuid;
+use ScrapeKit\ScrapeKit\Http\Exceptions\InvalidResponseException;
 use ScrapeKit\ScrapeKit\Http\Request\Callback;
+use ScrapeKit\ScrapeKit\Http\Request\Plugin;
 use ScrapeKit\ScrapeKit\Http\Request\RequestCallbacks;
 use ScrapeKit\ScrapeKit\Http\Request\RequestTries;
+use ScrapeKit\ScrapeKit\Http\Request\State;
 use ScrapeKit\ScrapeKit\Http\Response\Validator;
+
+use function GuzzleHttp\Promise\rejection_for;
 
 /**
  * Class Request
@@ -18,6 +27,7 @@ use ScrapeKit\ScrapeKit\Http\Response\Validator;
  */
 class Request
 {
+    use Macroable;
 
     /**
      * @var string
@@ -58,17 +68,21 @@ class Request
     protected $tries;
 
     /**
-     * @var
+     * @var Promise
      */
     protected $promise;
 
-    //    protected $parserClass;
-
+    /**
+     * @var State
+     */
+    protected $state;
 
     /**
      * @var array
      */
     protected $guzzleOptions = [];
+
+    protected $plugins = [];
 
     /**
      * Request constructor.
@@ -88,6 +102,7 @@ class Request
 
         $this->callbacks = new RequestCallbacks($this);
         $this->tries     = new RequestTries();
+        $this->state     = new State();
 
         $this->validator(Validator::isOk());
 
@@ -97,10 +112,62 @@ class Request
 
         $this->guzzleOptions[ 'scrapekit_request' ] = $this;
 
-
         $this->registerCallbacks();
-
         $this->configure();
+
+        foreach ($this->plugins as $plugin) {
+            $plugin->configure($this);
+        }
+
+        if (method_exists($this, 'success')) {
+            $this->onSuccess([ $this, 'success' ]);
+        }
+    }
+
+    public function withPlugins($plugins)
+    {
+        $plugins = Arr::wrap($plugins);
+        foreach ($plugins as $plugin) {
+            $this->withPlugin($plugin);
+        }
+
+        return $this;
+    }
+
+    public function withPlugin($plugin)
+    {
+
+        if (! $plugin instanceof Plugin) {
+            $pluginClass = $plugin;
+            $plugin      = new $plugin($this);
+        } else {
+            $pluginClass = get_class($plugin);
+        }
+
+        $meth = get_class_methods($pluginClass);
+
+        foreach ($meth as $m) {
+            if (Str::startsWith($m, 'macro')) {
+                $newName = Str::after($m, 'macro');
+                $newName = Str::camel($newName);
+            } elseif (Str::contains(( new \ReflectionMethod($pluginClass, $m) )->getDocComment(), '@macro')) {
+                $newName = $m;
+            } else {
+                continue;
+            }
+
+
+            static::macro($newName, [ $plugin, $m ]);
+        }
+
+        $this->plugins[ get_class($plugin) ] = $plugin;
+
+        return $this;
+    }
+
+    public function state()
+    {
+        return $this->state;
     }
 
     public function configure()
@@ -121,10 +188,47 @@ class Request
 
     public function send(\GuzzleHttp\Client $guzzle)
     {
-        $this->promise = $guzzle->sendAsync(new GuzzleRequest($this->method(), $this->url()), $this->guzzleOptions);
 
-        $this->promise->then();
+        $onRejected = function ($reason) use ($guzzle) {
+            //            if ( ! $this->failTriggered ) {
+            $this->callbacks()->trigger('fail', $reason);
+            //            }
 
+            $message = $reason->getMessage();
+            if (strpos($message, 'Operation timed out') !== false) {
+                $this->callbacks()->trigger('timeout', $message);
+            }
+
+            if ($this->shouldRetry()) {
+                return $this->send($guzzle);
+            }
+
+            return rejection_for($reason);
+        };
+
+        $this->promise = $guzzle->sendAsync(new GuzzleRequest($this->method(), $this->url()), $this->guzzleOptions)
+                                ->then(function ($response) use ($onRejected) {
+                                    $this->callbacks()->trigger(Request\RequestCallbacks::BODY_LOADED, $response);
+
+                                    if (! $this->valid()) {
+                                        $reason = new InvalidResponseException('Invalid response');
+                                        $onRejected($reason);
+
+                                        return rejection_for($reason);
+                                    }
+                                }, $onRejected);
+
+        $this->promise->otherwise(function ($e) {
+            if ($e instanceof InvalidResponseException) {
+                return;
+            }
+            if ($e instanceof RequestException) {
+                return;
+            }
+        });
+
+
+        $this->state()->set(State::PROCESSING);
 
         return $this->promise;
     }
@@ -302,36 +406,38 @@ class Request
             ->onLoad(function (Request $request, ResponseInterface $response) {
                 $this->response(new Response($response));
                 if ($this->valid()) {
-                    dump('valid');
+                    //                    dump( $this->url() . ' ' . 'valid' );
                     $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
                 } else {
-                    dump('invalid');
+                    //                    dump( $this->url() . ' ' . 'invalid' );
                     $this->callbacks()->trigger(RequestCallbacks::FAIL, new Exception('Invalid body'));
                 }
             })
             ->onPartialLoad(function (Request $request, $message) {
-                dump('Partial Load - ' . $message);
+                dump($this->url() . ' ' . 'Partial Load - ' . $message);
             })
             ->onTimeout(function (Request $request, $message) {
-                dump('Timeout - ' . $message);
+                //                dump( $this->url() . ' ' . 'Timeout - ' . $message );
             })
             ->onSuccess(function (Request $request) {
-                dump('SUCCESS');
+                dump($this->url() . ' ' . 'SUCCESS');
+                $this->state()->set(State::FINISHED);
             })
             ->onFail(function (Request $request, $reason) {
                 $this->tries()->increment();
-                dump('fail triggered - ' . $reason->getMessage());
+                //                dump( $this->url() . ' ' . 'fail triggered - ' . $reason->getMessage() );
 
                 if ($this->tries()->exceeded()) {
                     $this->callbacks()->trigger(RequestCallbacks::LAST_FAIL, $reason);
                 }
             })
             ->onLastFail(function (Request $request, $reason) {
-                dump('last fail triggered', $this->url());
-                dd($request->response->body());
+                //                dump( $this->url() . ' ' . 'last fail triggered', $this->url() );
+                $this->state()->set(State::FINISHED);
             })
             ->onHeaders(function (Request $request, $guzzleResponse) {
-                dump('headers loaded');
+                //                dd(( new Response($guzzleResponse) )->body());
+                //                dump( $this->url() . ' ' . 'headers loaded' );
             })
             /**/
             /**/

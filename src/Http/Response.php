@@ -2,15 +2,13 @@
 
 namespace ScrapeKit\ScrapeKit\Http;
 
-//use ScrapeKit\ScrapeKit\Http\Parsers\HtmlResponseParser;
-//use ScrapeKit\ScrapeKit\Http\Parsers\JsonResponseParser;
-//use ScrapeKit\ScrapeKit\Http\Parsers\ResponseParser;
-//use function GuzzleHttp\Psr7\stream_for;
+use Illuminate\Support\Traits\Macroable;
 
 use function GuzzleHttp\Psr7\stream_for;
 
 class Response
 {
+    use Macroable;
 
     /**
      * @var \GuzzleHttp\Psr7\Response
@@ -66,14 +64,11 @@ class Response
 
     public function isOk()
     {
-        //        dd($this->body());
-        //        dd($this->status );
         return $this->status() >= 200 && $this->status() < 300;
     }
 
     public function contentTypeContains($what)
     {
-
         $contentType = $this->headers()->first('Content-Type');
 
         return strpos($contentType, $what) !== false;
