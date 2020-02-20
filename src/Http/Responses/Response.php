@@ -7,7 +7,7 @@ use Illuminate\Support\Traits\Macroable;
 use ScrapeKit\ScrapeKit\Http\Exceptions\RequestException;
 use ScrapeKit\ScrapeKit\Http\Headers;
 use ScrapeKit\ScrapeKit\Http\Requests\Request;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Parser;
+use ScrapeKit\ScrapeKit\Http\Responses\Parsers\Parser;
 
 use function GuzzleHttp\Psr7\stream_for;
 
@@ -151,7 +151,7 @@ class Response
     /**
      * @param $parserClass
      *
-     * @return null|callable|Parser
+     * @return null|callable|\ScrapeKit\ScrapeKit\Http\Response\Parsers\Parser
      */
     protected function getParser($parserClass)
     {
