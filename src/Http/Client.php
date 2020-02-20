@@ -62,10 +62,16 @@ class Client
         return $this;
     }
 
+    /**
+     * @param $urlOrRequest
+     *
+     * @return Response
+     * @throws Exception
+     */
     public function request($urlOrRequest)
     {
         $req = Request::make($urlOrRequest);
-        $this->addRequest($req)->handle();
+        $this->addRequest($req)->run();
 
         return $req->response();
     }

@@ -2,6 +2,7 @@
 
 namespace ScrapeKit\ScrapeKit\Http;
 
+use Illuminate\Support\Traits\ForwardsCalls;
 use Illuminate\Support\Traits\Macroable;
 use ScrapeKit\ScrapeKit\Http\Response\Parser;
 
@@ -10,6 +11,7 @@ use function GuzzleHttp\Psr7\stream_for;
 class Response
 {
     use Macroable;
+    use ForwardsCalls;
 
     /**
      * @var \GuzzleHttp\Psr7\Response
@@ -40,9 +42,7 @@ class Response
         $this->headers();
         $this->request = $request;
 
-        if ($parserClass) {
-            $this->parser = new $parserClass($this);
-        }
+        $this->parser = $this->getParser($parserClass);
     }
 
     public function toPsr()
@@ -50,11 +50,21 @@ class Response
         return $this->guzzleResponse;
     }
 
-    public function parse()
+    public function parse($parserClass = null)
     {
+        // Override parser on the fly
+        if ($parserClass !== null) {
+            return $this->getParser($parserClass)->data();
+        }
 
         if ($this->parser instanceof Parser) {
-            return $this->parser;
+            return $this->parser->data();
+        }
+
+        if (is_callable($this->parser)) {
+            $parser = $this->parser;
+
+            return $parser($this);
         }
 
         throw new \Exception('Response parser is not defined');
@@ -114,6 +124,11 @@ class Response
         return $this->contentTypeContains('text/html');
     }
 
+    public function isXml()
+    {
+        return $this->contentTypeContains('text/xml');
+    }
+
     public function isJson()
     {
         return $this->contentType('application/json');
@@ -123,4 +138,39 @@ class Response
     {
         $this->headers()->get($header);
     }
+
+    /**
+     * @param $parserClass
+     */
+    protected function getParser($parserClass)
+    {
+        if (! $parserClass) {
+            return;
+        }
+
+        //        if ( $parserClass instanceof Parser ) {
+        //            return $parserClass;
+        //        }
+
+        if (is_callable($parserClass)) {
+            return $parserClass;
+        }
+
+        if (is_string($parserClass)) {
+            return new $parserClass($this);
+        }
+    }
+
+    public function dd()
+    {
+        dd($this->headers()->all(), $this->body());
+    }
+
+    //    public function __get( $name ) {
+    //        return $this->parse()->$name;
+    //    }
+    //
+    //    public function __call( $name, $arguments ) {
+    //        $this->forwardCallTo( $this->parse(), $name, $arguments );
+    //    }
 }

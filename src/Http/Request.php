@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
 use Psr\Http\Message\ResponseInterface;
 use Ramsey\Uuid\Uuid;
+use ScrapeKit\ScrapeKit\Common\MakesProxy;
+use ScrapeKit\ScrapeKit\Common\Proxy;
 use ScrapeKit\ScrapeKit\Http\Exceptions\InvalidResponseException;
 use ScrapeKit\ScrapeKit\Http\Request\Callback;
 use ScrapeKit\ScrapeKit\Http\Request\Plugin;
@@ -419,6 +421,32 @@ class Request
         return $this;
     }
 
+    public function proxy($proxy)
+    {
+
+        $proxyString   = $proxy;
+        $noproxy_hosts = [];
+
+        if ($proxy instanceof MakesProxy) {
+            $proxy = $proxy->toProxy();
+        }
+
+        if ($proxy instanceof Proxy) {
+            $proxyString   = $proxy->toString();
+            $noproxy_hosts = $proxy->ignoredHosts();
+        }
+
+        $proxy = [
+            'http'  => $proxyString,
+            'https' => $proxyString,
+            'no'    => $noproxy_hosts,
+        ];
+
+        $this->guzzleOptions[ 'proxy' ] = $proxy;
+
+        return $this;
+    }
+
     protected function registerCallbacks(): void
     {
         $this
@@ -429,7 +457,7 @@ class Request
                     $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
                 } else {
                     dump($this->url() . ' ' . 'invalid');
-                    $this->callbacks()->trigger(RequestCallbacks::FAIL, new Exception('Invalid body'));
+                    $this->callbacks()->trigger(RequestCallbacks::FAIL, new InvalidResponseException('Validation failed'));
                 }
             })
             ->onPartialLoad(function (Request $request, $message) {

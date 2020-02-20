@@ -15,6 +15,14 @@ class ScrapeKit
      */
     public function http($options = [])
     {
+        if (is_string($options)) {
+            $options = [
+                'guzzle' => [
+                    'base_uri' => $options,
+                ],
+            ];
+        }
+
         return new Client($options);
     }
 

@@ -3,9 +3,12 @@
 namespace ScrapeKit\ScrapeKit\Http\Response;
 
 use ScrapeKit\ScrapeKit\Http\Response;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\DummyParser;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\HtmlParser;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\JsonParser;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\MagicParser;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\RegexParser;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\XmlParser;
 
 abstract class Parser
 {
@@ -32,12 +35,36 @@ abstract class Parser
 
     public function __call($method, $args)
     {
-        return call_user_func([ $this->response, $method ], $args);
+        if (method_exists($this->response, $method)) {
+            return call_user_func([ $this->response, $method ], $args);
+        }
+    }
+
+    public static function autodetect()
+    {
+        return function (Response $response) {
+            if ($response->isJson()) {
+                return ( new JsonParser($response) )->data();
+            }
+            if ($response->isXml()) {
+                return ( new XmlParser($response) )->data();
+            }
+            if ($response->isHtml()) {
+                return ( new HtmlParser($response) )->data();
+            }
+
+            return ( new DummyParser($response) )->data();
+        };
     }
 
     public static function json()
     {
         return JsonParser::class;
+    }
+
+    public static function xml()
+    {
+        return XmlParser::class;
     }
 
     public static function html()

@@ -3,6 +3,7 @@
 namespace ScrapeKit\ScrapeKit\Common\Utils;
 
 use Exception;
+use Throwable;
 
 class BlackBox
 {
@@ -24,7 +25,7 @@ class BlackBox
      */
     protected $failed = false;
     /**
-     * @var Exception
+     * @var Throwable
      */
     protected $exception;
     /**
@@ -63,7 +64,7 @@ class BlackBox
                 foreach ($this->success_callbacks as $cb) {
                     $cb($this->result);
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $this->failed    = true;
                 $this->exception = $e;
 
