@@ -49,14 +49,15 @@ Make a single GET request and grab the response:
 ```php
 
 $html = scrapekit()->http()->request('http://httpbin.org')->body();
+$headers = scrapekit()->http()->request('http://httpbin.org/anything')->headers()->all();
 
 ```
 
-Define request as array and get headers:
+Use Request object and parse JSON response:
 
 ```php
 
-$html = scrapekit()->http()->request([ 'GET','http://httpbin.org', [ 'timeout' => 7 ]])->headers();
+$array = scrapekit()->http()->request( Request::make('http://httpbin.org/anything')->parseResponseWith( JsonParser::class ) )->parse()->data();
 
 ```
 

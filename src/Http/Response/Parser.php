@@ -3,6 +3,8 @@
 namespace ScrapeKit\ScrapeKit\Http\Response;
 
 use ScrapeKit\ScrapeKit\Http\Response;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\HtmlParser;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\JsonParser;
 
 abstract class Parser
 {
@@ -30,5 +32,15 @@ abstract class Parser
     public function __call($method, $args)
     {
         return call_user_func([ $this->response, $method ], $args);
+    }
+
+    public static function json()
+    {
+        return JsonParser::class;
+    }
+
+    public static function html()
+    {
+        return HtmlParser::class;
     }
 }

@@ -1,7 +1,8 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response;
+namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
 
+use ScrapeKit\ScrapeKit\Http\Response\Parser;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ProvidesValidation;
 use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
 
