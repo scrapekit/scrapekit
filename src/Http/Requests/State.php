@@ -1,6 +1,6 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Request;
+namespace ScrapeKit\ScrapeKit\Http\Requests;
 
 class State
 {

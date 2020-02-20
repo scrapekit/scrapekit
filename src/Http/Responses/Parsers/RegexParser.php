@@ -2,13 +2,9 @@
 
 namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
 
-use ScrapeKit\ScrapeKit\Http\Response\Parser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ProvidesValidation;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
-
 class RegexParser extends Parser
 {
-    
+
 
     public function all($regex)
     {

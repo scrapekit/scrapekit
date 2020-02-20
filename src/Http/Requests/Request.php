@@ -1,27 +1,29 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http;
+namespace ScrapeKit\ScrapeKit\Http\Requests;
 
 use Exception;
-use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Promise;
-use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
 use Psr\Http\Message\ResponseInterface;
 use Ramsey\Uuid\Uuid;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionMethod;
 use ScrapeKit\ScrapeKit\Common\MakesProxy;
 use ScrapeKit\ScrapeKit\Common\Proxy;
+use ScrapeKit\ScrapeKit\Http\Client;
 use ScrapeKit\ScrapeKit\Http\Exceptions\InvalidResponseException;
-use ScrapeKit\ScrapeKit\Http\Request\Callback;
-use ScrapeKit\ScrapeKit\Http\Request\Plugin;
-use ScrapeKit\ScrapeKit\Http\Request\RequestCallbacks;
-use ScrapeKit\ScrapeKit\Http\Request\RequestTries;
-use ScrapeKit\ScrapeKit\Http\Request\State;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ProvidesValidation;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
-use ScrapeKit\ScrapeKit\Http\Response\Validator;
+use ScrapeKit\ScrapeKit\Http\Exceptions\RequestException;
+use ScrapeKit\ScrapeKit\Http\Requests\Callbacks\Callback;
+use ScrapeKit\ScrapeKit\Http\Requests\Callbacks\RequestCallbacks;
+use ScrapeKit\ScrapeKit\Http\Requests\Concerns\SetsCallbacks;
+use ScrapeKit\ScrapeKit\Http\Requests\Plugins\Plugin;
+use ScrapeKit\ScrapeKit\Http\Responses\Parsers\Concerns\ResponseValidationInterface;
+use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
+use ScrapeKit\ScrapeKit\Http\Responses\Validator;
 
 use function GuzzleHttp\Promise\rejection_for;
 
@@ -32,6 +34,7 @@ use function GuzzleHttp\Promise\rejection_for;
 class Request
 {
     use Macroable;
+    use SetsCallbacks;
 
     /**
      * @var string
@@ -67,7 +70,7 @@ class Request
     protected $validator;
 
     /**
-     * @var RequestTries
+     * @var Tries
      */
     protected $tries;
 
@@ -110,7 +113,7 @@ class Request
         }
 
         $this->callbacks = new RequestCallbacks($this);
-        $this->tries     = new RequestTries();
+        $this->tries     = new Tries();
         $this->state     = new State();
 
         $this->validator(Validator::isOk());
@@ -131,6 +134,13 @@ class Request
         if (method_exists($this, 'success')) {
             $this->onSuccess([ $this, 'success' ]);
         }
+    }
+
+    public function query($query)
+    {
+        $this->guzzleOptions[ 'query' ] = $query;
+
+        return $this;
     }
 
     public function withPlugins($plugins)
@@ -163,12 +173,16 @@ class Request
         $meth = get_class_methods($pluginClass);
 
         foreach ($meth as $m) {
-            if (Str::startsWith($m, 'macro')) {
-                $newName = Str::after($m, 'macro');
-                $newName = Str::camel($newName);
-            } elseif (Str::contains(( new \ReflectionMethod($pluginClass, $m) )->getDocComment(), '@macro')) {
-                $newName = $m;
-            } else {
+            try {
+                if (Str::startsWith($m, 'macro')) {
+                    $newName = Str::after($m, 'macro');
+                    $newName = Str::camel($newName);
+                } elseif (Str::contains(( new ReflectionMethod($pluginClass, $m) )->getDocComment(), '@macro')) {
+                    $newName = $m;
+                } else {
+                    continue;
+                }
+            } catch (ReflectionException $e) {
                 continue;
             }
 
@@ -222,12 +236,12 @@ class Request
             return rejection_for($reason);
         };
 
-        $this->promise = $guzzle->sendAsync(new GuzzleRequest($this->method(), $this->url()), $this->guzzleOptions)
+        $this->promise = $guzzle->sendAsync(new \GuzzleHttp\Psr7\Request($this->method(), $this->url()), $this->guzzleOptions)
                                 ->then(function ($response) use ($onRejected) {
-                                    $this->callbacks()->trigger(Request\RequestCallbacks::BODY_LOADED, $response);
+                                    $this->callbacks()->trigger(RequestCallbacks::BODY_LOADED, $response);
 
                                     if (! $this->valid()) {
-                                        $reason = new InvalidResponseException('Invalid response');
+                                        $reason = new InvalidResponseException('Invalid response', $this);
                                         $onRejected($reason, false);
 
                                         return rejection_for($reason);
@@ -365,60 +379,11 @@ class Request
     public function valid()
     {
 
-        if ($this->response() && $this->parserClass && $this->response()->parse() instanceof ResponseValidationInterface) {
-            return $this->response()->parse()->validate();
+        if ($this->response() && $this->parserClass && ( new ReflectionClass($this->parserClass) )->implementsInterface(RequestValidation::class)) {
+            return $this->parserClass::validateRequest($this);
         }
 
         return $this->response() && $this->validator()->fire($this);
-    }
-
-    public function onPartialLoad(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::BODY_PARTIALLY_LOADED, $callback);
-
-        return $this;
-    }
-
-    public function onLastFail(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::LAST_FAIL, $callback);
-
-        return $this;
-    }
-
-    public function onFail(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::FAIL, $callback);
-
-        return $this;
-    }
-
-    public function onSuccess(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::SUCCESS, $callback);
-
-        return $this;
-    }
-
-    public function onLoad(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::BODY_LOADED, $callback);
-
-        return $this;
-    }
-
-    public function onTimeout(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::TIMEOUT, $callback);
-
-        return $this;
-    }
-
-    public function onHeaders(callable $callback)
-    {
-        $this->callbacks()->on(RequestCallbacks::HEADERS_LOADED, $callback);
-
-        return $this;
     }
 
     public function proxy($proxy)
@@ -457,14 +422,14 @@ class Request
                     $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
                 } else {
                     dump($this->url() . ' ' . 'invalid');
-                    $this->callbacks()->trigger(RequestCallbacks::FAIL, new InvalidResponseException('Validation failed'));
+                    $this->callbacks()->trigger(RequestCallbacks::FAIL, new InvalidResponseException('Validation failed', $this));
                 }
             })
             ->onPartialLoad(function (Request $request, $message) {
                 dump($this->url() . ' ' . 'Partial Load - ' . $message);
             })
             ->onTimeout(function (Request $request, $message) {
-                //                                dump( $this->url() . ' ' . 'Timeout - ' . $message );
+                dump($this->url() . ' ' . 'Timeout - ' . $message);
             })
             ->onSuccess(function (Request $request) {
                 dump($this->url() . ' ' . 'SUCCESS');

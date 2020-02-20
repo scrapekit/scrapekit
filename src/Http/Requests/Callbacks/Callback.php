@@ -1,8 +1,8 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Request;
+namespace ScrapeKit\ScrapeKit\Http\Requests\Callbacks;
 
-use ScrapeKit\ScrapeKit\Http\Request;
+use ScrapeKit\ScrapeKit\Http\Requests\Request;
 
 class Callback
 {

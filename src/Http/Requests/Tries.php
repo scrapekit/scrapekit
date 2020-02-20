@@ -1,15 +1,15 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Request;
+namespace ScrapeKit\ScrapeKit\Http\Requests;
 
-class RequestTries
+class Tries
 {
 
     protected $current = 0;
     protected $max = 1;
 
     /**
-     * RequestTries constructor.
+     * Tries constructor.
      *
      * @param int $current
      * @param int $max

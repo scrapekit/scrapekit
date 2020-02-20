@@ -1,9 +1,10 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Request;
+namespace ScrapeKit\ScrapeKit\Http\Requests\Callbacks;
 
-use Illuminate\Support\Arr;
-use ScrapeKit\ScrapeKit\Http\Request;
+use Exception;
+use ScrapeKit\ScrapeKit\Http\Requests\Request;
+use Throwable;
 
 class RequestCallbacks
 {
@@ -33,7 +34,6 @@ class RequestCallbacks
     public const LAST_FAIL = 'last_fail';
     public const TIMEOUT = 'timeout';
 
-
     /**
      * RequestCallbacks constructor.
      *
@@ -60,9 +60,7 @@ class RequestCallbacks
         $newHandler = function (...$args) use ($handler) {
             try {
                 $handler(...$args);
-            } catch (\Exception $e) {
-                $this->request->client()->throw($e);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->request->client()->throw($e);
             }
         };

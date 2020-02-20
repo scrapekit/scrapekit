@@ -2,13 +2,6 @@
 
 namespace ScrapeKit\ScrapeKit\Http\Exceptions;
 
-use Exception;
-use ScrapeKit\ScrapeKit\Http\Request;
-
-class RequestAbortedException extends Exception
+class RequestAbortedException extends RequestException
 {
-    public function __construct(Request $request)
-    {
-        parent::__construct('Request aborted: ' . $request->url());
-    }
 }

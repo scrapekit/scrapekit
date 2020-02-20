@@ -1,14 +1,8 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response;
+namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
 
-use ScrapeKit\ScrapeKit\Http\Response;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\DummyParser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\HtmlParser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\JsonParser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\MagicParser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\RegexParser;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\XmlParser;
+use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
 
 abstract class Parser
 {

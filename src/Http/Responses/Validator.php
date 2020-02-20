@@ -1,17 +1,19 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response;
+namespace ScrapeKit\ScrapeKit\Http\Responses;
 
-use ScrapeKit\ScrapeKit\Http\Request;
-use ScrapeKit\ScrapeKit\Http\Response\Parsers\Concerns\ResponseValidationInterface;
+use ReflectionClass;
+use ScrapeKit\ScrapeKit\Http\Requests\Request;
+use ScrapeKit\ScrapeKit\Http\Requests\RequestValidation;
+use ScrapeKit\ScrapeKit\Http\Responses\Parsers\Concerns\ResponseValidationInterface;
 
 class Validator
 {
 
     public static function useParser($parserClass)
     {
-        if (! ( ( new \ReflectionClass($parserClass) )->implementsInterface(ResponseValidationInterface::class) )) {
-            throw new \Exception($parserClass . ' can not validate responses');
+        if (! ( ( new ReflectionClass($parserClass) )->implementsInterface(RequestValidation::class) )) {
+            throw new \Exception($parserClass . ' can not validate requests');
         }
 
         return function (Request $request) use ($parserClass) {

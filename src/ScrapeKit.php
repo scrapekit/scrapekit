@@ -9,21 +9,15 @@ class ScrapeKit
 {
 
     /**
-     * @param null $options
+     *
+     * @param $url
      *
      * @return Client
      */
-    public function http($options = [])
+    public function http($url = null)
     {
-        if (is_string($options)) {
-            $options = [
-                'guzzle' => [
-                    'base_uri' => $options,
-                ],
-            ];
-        }
 
-        return new Client($options);
+        return new Client($url);
     }
 
     public function chrome($url = 'http://localhost:9222')

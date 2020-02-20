@@ -2,9 +2,7 @@
 
 namespace ScrapeKit\ScrapeKit\Http\Exceptions;
 
-use Exception;
-
-class InvalidResponseException extends Exception
+class InvalidResponseException extends RequestException
 {
 
 }

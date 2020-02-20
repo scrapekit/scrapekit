@@ -1,10 +1,10 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Request;
+namespace ScrapeKit\ScrapeKit\Http\Requests;
 
-use Illuminate\Support\Collection;
+use Illuminate\Support\Collection as IlluminateCollection;
 
-class RequestCollection extends Collection
+class Collection extends IlluminateCollection
 {
 
     /**
@@ -17,7 +17,7 @@ class RequestCollection extends Collection
     public function unprocessed()
     {
 
-        return $this->filter(function ($request) {
+        return $this->filter(function (Request $request) {
             return $request->state()->is(State::NEW);
         });
     }

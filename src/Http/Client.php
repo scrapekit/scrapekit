@@ -4,39 +4,50 @@ namespace ScrapeKit\ScrapeKit\Http;
 
 use Exception;
 use GuzzleHttp\Promise\CancellationException;
-use ScrapeKit\ScrapeKit\Http\Request\RequestCollection;
-use Throwable;
+use GuzzleHttp\Promise\EachPromise;
+use GuzzleHttp\Promise\Promise;
+use ScrapeKit\ScrapeKit\Http\Requests\Collection;
+use ScrapeKit\ScrapeKit\Http\Requests\Request;
+use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
 
 class Client
 {
 
     /**
-     * @var RequestCollection
+     * @var Collection
      */
     public $requests;
     public $options = [];
+    /**
+     * @var int
+     */
     public $threads = 10;
     /**
      * @var array
      */
     protected $promises = [];
+    /**
+     * @var Promise
+     */
     protected $promise;
 
     /**
      * Client constructor.
      *
-     * @param array $options
+     * @param $url
      */
-    public function __construct($options = [])
+    public function __construct($url = null)
     {
-        $this->requests = new RequestCollection();
-        $this->options  = array_replace($this->options, $options);
+        $this->requests                          = new Collection();
+        $this->options[ 'guzzle' ][ 'base_uri' ] = $url;
     }
 
     public function threads($num = null)
     {
         if ($num !== null) {
             $this->threads = $num;
+
+            return $this;
         }
 
         return $this->threads;
@@ -85,14 +96,14 @@ class Client
         ]);
 
         while ($count = $this->requests->unprocessed()->count()) {
-            dump('Unprocessed requests: ' . $count);
+            //            dump( 'Unprocessed requests: ' . $count );
             $fnc = function () use ($guzzle) {
                 while ($r = $this->requests->unprocessed()->first()) {
                     yield $r->send($guzzle);
                 }
             };
 
-            $this->promise = ( new \GuzzleHttp\Promise\EachPromise($fnc(), [ 'concurrency' => $this->threads, ]) )->promise();
+            $this->promise = ( new EachPromise($fnc(), [ 'concurrency' => $this->threads, ]) )->promise();
             $this->promise->wait();
         }
 

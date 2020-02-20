@@ -1,10 +1,13 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http;
+namespace ScrapeKit\ScrapeKit\Http\Responses\Response;
 
 use Illuminate\Support\Traits\ForwardsCalls;
 use Illuminate\Support\Traits\Macroable;
-use ScrapeKit\ScrapeKit\Http\Response\Parser;
+use ScrapeKit\ScrapeKit\Http\Exceptions\RequestException;
+use ScrapeKit\ScrapeKit\Http\Headers;
+use ScrapeKit\ScrapeKit\Http\Requests\Request;
+use ScrapeKit\ScrapeKit\Http\Response\Parsers\Parser;
 
 use function GuzzleHttp\Psr7\stream_for;
 
@@ -50,6 +53,12 @@ class Response
         return $this->guzzleResponse;
     }
 
+    /**
+     * @param null $parserClass
+     *
+     * @return mixed
+     * @throws RequestException
+     */
     public function parse($parserClass = null)
     {
         // Override parser on the fly
@@ -67,7 +76,7 @@ class Response
             return $parser($this);
         }
 
-        throw new \Exception('Response parser is not defined');
+        throw new RequestException('Response parser is not defined', $this->request);
     }
 
     public function body($newBody = null)
@@ -141,16 +150,11 @@ class Response
 
     /**
      * @param $parserClass
+     *
+     * @return null|callable|Parser
      */
     protected function getParser($parserClass)
     {
-        if (! $parserClass) {
-            return;
-        }
-
-        //        if ( $parserClass instanceof Parser ) {
-        //            return $parserClass;
-        //        }
 
         if (is_callable($parserClass)) {
             return $parserClass;
@@ -159,18 +163,12 @@ class Response
         if (is_string($parserClass)) {
             return new $parserClass($this);
         }
+
+        return null;
     }
 
     public function dd()
     {
         dd($this->headers()->all(), $this->body());
     }
-
-    //    public function __get( $name ) {
-    //        return $this->parse()->$name;
-    //    }
-    //
-    //    public function __call( $name, $arguments ) {
-    //        $this->forwardCallTo( $this->parse(), $name, $arguments );
-    //    }
 }
