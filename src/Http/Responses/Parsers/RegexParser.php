@@ -1,6 +1,6 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
+namespace ScrapeKit\ScrapeKit\Http\Responses\Parsers;
 
 class RegexParser extends Parser
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
+namespace ScrapeKit\ScrapeKit\Http\Responses\Parsers;
 
 use ScrapeKit\ScrapeKit\Http\Responses\Response\Response;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace ScrapeKit\ScrapeKit\Http\Response\Parsers;
+namespace ScrapeKit\ScrapeKit\Http\Responses\Parsers;
 
 use DiDom\Document;
 use ScrapeKit\ScrapeKit\Http\Requests\Request;
