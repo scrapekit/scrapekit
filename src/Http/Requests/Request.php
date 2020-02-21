@@ -122,7 +122,7 @@ class Request
             $this->callbacks()->trigger(RequestCallbacks::HEADERS_LOADED, $guzzleResponse);
         };
 
-        $this->guzzleOptions[ 'scrapekit_request' ] = $this;
+        //        $this->guzzleOptions[ 'scrapekit_request' ] = $this;
 
         $this->registerCallbacks();
         $this->configure();
@@ -384,6 +384,27 @@ class Request
         }
 
         return $this->response() && $this->validator()->fire($this);
+    }
+
+
+    public function withHeader($name, $value)
+    {
+
+        Arr::set($this->guzzleOptions, 'headers.' . $name, $value);
+
+        return $this;
+    }
+
+    public function userAgent($value = null)
+    {
+
+        if ($value !== null) {
+            Arr::set($this->guzzleOptions, 'headers.User-Agent', $value);
+
+            return $this;
+        }
+
+        return Arr::get($this->guzzleOptions, 'headers.User-Agent');
     }
 
     public function proxy($proxy)
