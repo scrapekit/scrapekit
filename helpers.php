@@ -15,3 +15,17 @@ function scrapekit() {
 function blackbox( callable $callback ) {
     return BlackBox::try( $callback );
 }
+
+if ( ! function_exists( 'fix_url' ) ) {
+
+    function fix_url( $url ) {
+        if ( strpos( $url, 'http://' ) === 0 ) {
+            return $url;
+        }
+        if ( strpos( $url, 'https://' ) === 0 ) {
+            return $url;
+        }
+
+        return 'http://' . $url;
+    }
+}

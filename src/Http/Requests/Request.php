@@ -3,6 +3,7 @@
 namespace ScrapeKit\ScrapeKit\Http\Requests;
 
 use Exception;
+use GuzzleHttp\Promise\FulfilledPromise;
 use GuzzleHttp\Promise\Promise;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -26,6 +27,7 @@ use ScrapeKit\ScrapeKit\Http\Responses\Response;
 use ScrapeKit\ScrapeKit\Http\Responses\Validator;
 
 use function GuzzleHttp\Promise\rejection_for;
+use function GuzzleHttp\Psr7\stream_for;
 
 /**
  * Class Request
@@ -94,6 +96,22 @@ class Request {
      * @var string
      */
     protected $parserClass;
+    /**
+     * @var string
+     */
+    protected $cachePath = '/tmp';
+    /**
+     * @var bool
+     */
+    protected $cacheResponses = false;
+    /**
+     * @var
+     */
+    protected $cacheKey;
+    /**
+     * @var callable
+     */
+    protected $cacheKeyDecider;
 
     /**
      * Request constructor.
@@ -115,6 +133,9 @@ class Request {
         $this->state     = new State();
 
         $this->validator( Validator::isOk() );
+        $this->cacheKeyDecider = function ( Request $request ) {
+            return $request->url();
+        };
 
         $this->guzzleOptions [ 'on_headers' ] = function ( ResponseInterface $guzzleResponse ) {
             $this->callbacks()->trigger( RequestCallbacks::HEADERS_LOADED, $guzzleResponse );
@@ -210,6 +231,7 @@ class Request {
 
     public function send( \GuzzleHttp\Client $guzzle ) {
 
+
         $onRejected = function ( $reason, $trigger = true ) use ( $guzzle ) {
             if ( $trigger ) {
                 $this->callbacks()->trigger( 'fail', $reason );
@@ -227,17 +249,56 @@ class Request {
             return rejection_for( $reason );
         };
 
-        $this->promise = $guzzle->sendAsync( new \GuzzleHttp\Psr7\Request( $this->method(), $this->url() ), $this->guzzleOptions )
-                                ->then( function ( $response ) use ( $onRejected ) {
-                                    $this->callbacks()->trigger( RequestCallbacks::BODY_LOADED, $response );
+        $onFulfilled = function ( \GuzzleHttp\Psr7\Response $response ) use ( $onRejected ) {
 
-                                    if ( ! $this->valid() ) {
-                                        $reason = new InvalidResponseException( 'Invalid response', $this );
-                                        $onRejected( $reason, false );
+            if ( $this->shouldCache() ) {
+                $contents = $response->getBody()->getContents();
 
-                                        return rejection_for( $reason );
-                                    }
-                                }, $onRejected );
+                $cachePath     = $this->getCachePath();
+                $cacheKey      = md5( $this->getCacheKey() );
+                $firstFragment = substr( $cacheKey, 0, 2 );
+                if ( ! file_exists( $cachePath . '/' . $firstFragment ) ) {
+                    mkdir( $cachePath . '/' . $firstFragment, 0777, true );
+                }
+
+                file_put_contents( $cachePath . '/' . $firstFragment . '/' . $cacheKey . '.txt', serialize( [
+                    $response,
+                    $contents,
+                ] ) );
+
+                $response = $response->withBody( stream_for( $contents ) );
+            }
+
+            $this->callbacks()->trigger( RequestCallbacks::BODY_LOADED, $response );
+
+            if ( ! $this->valid() ) {
+                $reason = new InvalidResponseException( 'Invalid response', $this );
+                $onRejected( $reason, false );
+
+                return rejection_for( $reason );
+            }
+        };
+
+
+        $cachePath     = $this->getCachePath();
+        $cacheKey      = $this->getCacheKey();
+        $cacheKey      = md5( $cacheKey );
+
+        $firstFragment = substr( $cacheKey, 0, 2 );
+        if ( file_exists( $cachePath . '/' . $firstFragment . '/' . $cacheKey . '.txt' ) ) {
+
+            $cached   = unserialize( file_get_contents( $cachePath . '/' . $firstFragment . '/' . $cacheKey . '.txt' ) );
+            $response = $cached[ 0 ];
+            $response = $response->withBody( stream_for( $cached[ 1 ] ) );
+            $onFulfilled( $response );
+
+            return new Promise();
+        }
+
+
+        $this->promise = $guzzle
+            ->sendAsync( new \GuzzleHttp\Psr7\Request( $this->method(), $this->url() ), $this->guzzleOptions )
+            ->then( $onFulfilled, $onRejected );
 
         $this->promise->otherwise( function ( $e ) {
             if ( $e instanceof InvalidResponseException ) {
@@ -252,6 +313,30 @@ class Request {
         $this->state()->set( State::PROCESSING );
 
         return $this->promise;
+    }
+
+    public function shouldCache() {
+        return $this->cacheResponses;
+    }
+
+    public function getCachePath() {
+        return $this->cachePath;
+    }
+
+    public function getCacheKey() {
+        $d = $this->cacheKeyDecider;
+
+        return $d( $this );
+    }
+
+    public function cache( $path = '/tmp', callable $shouldCache = null ) {
+        $this->cacheResponses = true;
+        $this->cachePath      = $path;
+        if ( is_callable( $shouldCache ) ) {
+            $this->cacheKeyDecider = $shouldCache;
+        }
+
+        return $this;
     }
 
     /**
