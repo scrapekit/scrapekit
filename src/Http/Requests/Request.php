@@ -31,8 +31,7 @@ use function GuzzleHttp\Promise\rejection_for;
  * Class Request
  * @package ScrapeKit\ScrapeKit\Http
  */
-class Request
-{
+class Request {
     use Macroable;
     use SetsCallbacks;
 
@@ -103,23 +102,22 @@ class Request
      *
      * @throws Exception
      */
-    public function __construct($url = null)
-    {
+    public function __construct( $url = null ) {
 
         $this->id = Uuid::uuid4()->toString();
 
-        if ($url) {
+        if ( $url ) {
             $this->url = $url;
         }
 
-        $this->callbacks = new RequestCallbacks($this);
+        $this->callbacks = new RequestCallbacks( $this );
         $this->tries     = new Tries();
         $this->state     = new State();
 
-        $this->validator(Validator::isOk());
+        $this->validator( Validator::isOk() );
 
-        $this->guzzleOptions [ 'on_headers' ] = function (ResponseInterface $guzzleResponse) {
-            $this->callbacks()->trigger(RequestCallbacks::HEADERS_LOADED, $guzzleResponse);
+        $this->guzzleOptions [ 'on_headers' ] = function ( ResponseInterface $guzzleResponse ) {
+            $this->callbacks()->trigger( RequestCallbacks::HEADERS_LOADED, $guzzleResponse );
         };
 
         //        $this->guzzleOptions[ 'scrapekit_request' ] = $this;
@@ -127,88 +125,82 @@ class Request
         $this->registerCallbacks();
         $this->configure();
 
-        foreach ($this->plugins as $plugin) {
-            $plugin->configure($this);
+        foreach ( $this->plugins as $plugin ) {
+            $plugin->configure( $this );
         }
 
-        if (method_exists($this, 'success')) {
-            $this->onSuccess([ $this, 'success' ]);
+        if ( method_exists( $this, 'success' ) ) {
+            $this->onSuccess( [ $this, 'success' ] );
         }
     }
 
-    public function query($query)
-    {
+    public function query( $query ) {
         $this->guzzleOptions[ 'query' ] = $query;
 
         return $this;
     }
 
-    public function withPlugins($plugins)
-    {
-        $plugins = Arr::wrap($plugins);
-        foreach ($plugins as $plugin) {
-            $this->withPlugin($plugin);
+    public function withPlugins( $plugins ) {
+        $plugins = Arr::wrap( $plugins );
+        foreach ( $plugins as $plugin ) {
+            $this->withPlugin( $plugin );
         }
 
         return $this;
     }
 
-    public function parseResponseWith($parserClass)
-    {
+    public function parseResponseWith( $parserClass ) {
         $this->parserClass = $parserClass;
 
         return $this;
     }
 
-    public function withPlugin($plugin)
-    {
+    public function withPlugin( $plugin ) {
 
-        if (! $plugin instanceof Plugin) {
+        if ( ! $plugin instanceof Plugin ) {
             $pluginClass = $plugin;
-            $plugin      = new $plugin($this);
+            $plugin      = new $plugin( $this );
         } else {
-            $pluginClass = get_class($plugin);
+            $pluginClass = get_class( $plugin );
         }
 
-        $meth = get_class_methods($pluginClass);
+        $meth = get_class_methods( $pluginClass );
 
-        foreach ($meth as $m) {
+        foreach ( $meth as $m ) {
             try {
-                if (Str::startsWith($m, 'macro')) {
-                    $newName = Str::after($m, 'macro');
-                    $newName = Str::camel($newName);
-                } elseif (Str::contains(( new ReflectionMethod($pluginClass, $m) )->getDocComment(), '@macro')) {
+                if ( Str::startsWith( $m, 'macro' ) ) {
+                    $newName = Str::after( $m, 'macro' );
+                    $newName = Str::camel( $newName );
+                } elseif ( Str::contains( ( new ReflectionMethod( $pluginClass, $m ) )->getDocComment(), '@macro' ) ) {
                     $newName = $m;
                 } else {
                     continue;
                 }
-            } catch (ReflectionException $e) {
+            }
+            catch ( ReflectionException $e ) {
                 continue;
             }
 
 
-            static::macro($newName, [ $plugin, $m ]);
+            static::macro( $newName, [ $plugin, $m ] );
         }
 
-        $this->plugins[ get_class($plugin) ] = $plugin;
+        $this->plugins[ get_class( $plugin ) ] = $plugin;
 
         return $this;
     }
 
-    public function state()
-    {
+    public function state() {
         return $this->state;
     }
 
-    public function configure()
-    {
+    public function configure() {
         return $this;
     }
 
-    public function tries($max = null)
-    {
-        if ($max) {
-            $this->tries->max($max);
+    public function tries( $max = null ) {
+        if ( $max ) {
+            $this->tries->max( $max );
 
             return $this;
         }
@@ -216,49 +208,48 @@ class Request
         return $this->tries;
     }
 
-    public function send(\GuzzleHttp\Client $guzzle)
-    {
+    public function send( \GuzzleHttp\Client $guzzle ) {
 
-        $onRejected = function ($reason, $trigger = true) use ($guzzle) {
-            if ($trigger) {
-                $this->callbacks()->trigger('fail', $reason);
+        $onRejected = function ( $reason, $trigger = true ) use ( $guzzle ) {
+            if ( $trigger ) {
+                $this->callbacks()->trigger( 'fail', $reason );
             }
 
             $message = $reason->getMessage();
-            if (strpos($message, 'Operation timed out') !== false) {
-                $this->callbacks()->trigger('timeout', $message);
+            if ( strpos( $message, 'Operation timed out' ) !== false ) {
+                $this->callbacks()->trigger( 'timeout', $message );
             }
 
-            if ($this->shouldRetry()) {
-                return $this->send($guzzle);
+            if ( $this->shouldRetry() ) {
+                return $this->send( $guzzle );
             }
 
-            return rejection_for($reason);
+            return rejection_for( $reason );
         };
 
-        $this->promise = $guzzle->sendAsync(new \GuzzleHttp\Psr7\Request($this->method(), $this->url()), $this->guzzleOptions)
-                                ->then(function ($response) use ($onRejected) {
-                                    $this->callbacks()->trigger(RequestCallbacks::BODY_LOADED, $response);
+        $this->promise = $guzzle->sendAsync( new \GuzzleHttp\Psr7\Request( $this->method(), $this->url() ), $this->guzzleOptions )
+                                ->then( function ( $response ) use ( $onRejected ) {
+                                    $this->callbacks()->trigger( RequestCallbacks::BODY_LOADED, $response );
 
-                                    if (! $this->valid()) {
-                                        $reason = new InvalidResponseException('Invalid response', $this);
-                                        $onRejected($reason, false);
+                                    if ( ! $this->valid() ) {
+                                        $reason = new InvalidResponseException( 'Invalid response', $this );
+                                        $onRejected( $reason, false );
 
-                                        return rejection_for($reason);
+                                        return rejection_for( $reason );
                                     }
-                                }, $onRejected);
+                                }, $onRejected );
 
-        $this->promise->otherwise(function ($e) {
-            if ($e instanceof InvalidResponseException) {
+        $this->promise->otherwise( function ( $e ) {
+            if ( $e instanceof InvalidResponseException ) {
                 return;
             }
-            if ($e instanceof RequestException) {
+            if ( $e instanceof RequestException ) {
                 return;
             }
-        });
+        } );
 
 
-        $this->state()->set(State::PROCESSING);
+        $this->state()->set( State::PROCESSING );
 
         return $this->promise;
     }
@@ -266,89 +257,81 @@ class Request
     /**
      * @return RequestCallbacks
      */
-    public function callbacks()
-    {
+    public function callbacks() {
         return $this->callbacks;
     }
 
-    public function response(Response $response = null)
-    {
-        if ($response) {
+    public function response( Response $response = null ) {
+        if ( $response ) {
             $this->response = $response;
         }
 
         return $this->response;
     }
 
-    public function validator(callable $callable = null)
-    {
-        if ($callable === null) {
+    public function validator( callable $callable = null ) {
+        if ( $callable === null ) {
             return $this->validator;
         }
 
-        $this->validator = new Callback($callable);
+        $this->validator = new Callback( $callable );
 
         return $this;
     }
 
-    public function id($value = null)
-    {
-        if ($value !== null) {
+    public function id( $value = null ) {
+        if ( $value !== null ) {
             $this->id = $value;
         }
 
         return $this->id;
     }
 
-    public function method($value = null)
-    {
-        if ($value !== null) {
+    public function method( $value = null ) {
+        if ( $value !== null ) {
             $this->method = $value;
         }
 
         return $this->method;
     }
 
-    public function client($value = null)
-    {
-        if ($value !== null) {
+    public function client( $value = null ) {
+        if ( $value !== null ) {
             $this->client = $value;
         }
 
         return $this->client;
     }
 
-    public function url($value = null)
-    {
-        if ($value !== null) {
+    public function url( $value = null ) {
+        if ( $value !== null ) {
             $this->url = $value;
         }
 
         return $this->url;
     }
 
-    public function timeouts($timeout = null)
-    {
-        if ($timeout === null) {
+    public function timeouts( $timeout = null ) {
+        if ( $timeout === null ) {
             return $this->guzzleOptions[ 'timeout' ];
         }
 
-        if (is_numeric($timeout)) {
+        if ( is_numeric( $timeout ) ) {
             $timeout = [ 'load' => $timeout ];
         }
 
-        if (is_array($timeout)) {
-            $timeoutC = Arr::get($timeout, 0, Arr::get($timeout, 'connect', null));
-            $timeoutL = Arr::get($timeout, 1, Arr::get($timeout, 'load', null));
-            $timeoutR = Arr::get($timeout, 2, Arr::get($timeout, 'read', null));
+        if ( is_array( $timeout ) ) {
+            $timeoutC = Arr::get( $timeout, 0, Arr::get( $timeout, 'connect', null ) );
+            $timeoutL = Arr::get( $timeout, 1, Arr::get( $timeout, 'load', null ) );
+            $timeoutR = Arr::get( $timeout, 2, Arr::get( $timeout, 'read', null ) );
 
-            if ($timeoutC !== null) {
+            if ( $timeoutC !== null ) {
                 $this->guzzleOptions[ 'connect_timeout' ] = $timeoutC;
             }
-            if ($timeoutL !== null) {
+            if ( $timeoutL !== null ) {
                 $this->guzzleOptions[ 'timeout' ] = $timeoutL;
             }
-            if ($timeoutR !== null) {
+            if ( $timeoutR !== null ) {
                 $this->guzzleOptions[ 'read_timeout' ] = $timeoutR;
             }
         }
@@ -362,62 +345,62 @@ class Request
      * @return static
      * @throws Exception
      */
-    public static function make($url)
-    {
-        if ($url instanceof static) {
+    public static function make( $url ) {
+        if ( $url instanceof static ) {
             return $url;
         }
 
-        return new static($url);
+        return new static( $url );
     }
 
-    public function shouldRetry()
-    {
+    public function shouldRetry() {
         return ! $this->tries()->exceeded() && ! $this->valid();
     }
 
-    public function valid()
-    {
+    public function valid() {
 
-        if ($this->response() && $this->parserClass && ( new ReflectionClass($this->parserClass) )->implementsInterface(RequestValidation::class)) {
-            return $this->parserClass::validateRequest($this);
+        if ( $this->response() && $this->parserClass && ( new ReflectionClass( $this->parserClass ) )->implementsInterface( RequestValidation::class ) ) {
+            return $this->parserClass::validateRequest( $this );
         }
 
-        return $this->response() && $this->validator()->fire($this);
+        return $this->response() && $this->validator()->fire( $this );
     }
 
 
-    public function withHeader($name, $value)
-    {
+    public function withHeader( $name, $value ) {
 
-        Arr::set($this->guzzleOptions, 'headers.' . $name, $value);
+        Arr::set( $this->guzzleOptions, 'headers.' . $name, $value );
 
         return $this;
     }
 
-    public function userAgent($value = null)
-    {
+    public function headers( $value = null ) {
+        if ( $value === null ) {
+            return Arr::get( $this->guzzleOptions, 'headers' );
+        }
+    }
 
-        if ($value !== null) {
-            Arr::set($this->guzzleOptions, 'headers.User-Agent', $value);
+    public function userAgent( $value = null ) {
+
+        if ( $value !== null ) {
+            Arr::set( $this->guzzleOptions, 'headers.User-Agent', $value );
 
             return $this;
         }
 
-        return Arr::get($this->guzzleOptions, 'headers.User-Agent');
+        return Arr::get( $this->guzzleOptions, 'headers.User-Agent' );
     }
 
-    public function proxy($proxy)
-    {
+    public function proxy( $proxy ) {
 
         $proxyString   = $proxy;
         $noproxy_hosts = [];
 
-        if ($proxy instanceof MakesProxy) {
+        if ( $proxy instanceof MakesProxy ) {
             $proxy = $proxy->toProxy();
         }
 
-        if ($proxy instanceof Proxy) {
+        if ( $proxy instanceof Proxy ) {
             $proxyString   = $proxy->toString();
             $noproxy_hosts = $proxy->ignoredHosts();
         }
@@ -433,45 +416,44 @@ class Request
         return $this;
     }
 
-    protected function registerCallbacks(): void
-    {
+    protected function registerCallbacks(): void {
         $this
-            ->onLoad(function (Request $request, ResponseInterface $response) {
-                $this->response(new Response($response, $this, $this->parserClass));
-                if ($this->valid()) {
+            ->onLoad( function ( Request $request, ResponseInterface $response ) {
+                $this->response( new Response( $response, $this, $this->parserClass ) );
+                if ( $this->valid() ) {
                     //                    dump($this->url() . ' ' . 'valid');
-                    $this->callbacks()->trigger(RequestCallbacks::SUCCESS);
+                    $this->callbacks()->trigger( RequestCallbacks::SUCCESS );
                 } else {
                     //                    dump($this->url() . ' ' . 'invalid');
-                    $this->callbacks()->trigger(RequestCallbacks::FAIL, new InvalidResponseException('Validation failed', $this));
+                    $this->callbacks()->trigger( RequestCallbacks::FAIL, new InvalidResponseException( 'Validation failed', $this ) );
                 }
-            })
-            ->onPartialLoad(function (Request $request, $message) {
+            } )
+            ->onPartialLoad( function ( Request $request, $message ) {
                 //                dump($this->url() . ' ' . 'Partial Load - ' . $message);
-            })
-            ->onTimeout(function (Request $request, $message) {
+            } )
+            ->onTimeout( function ( Request $request, $message ) {
                 //                dump($this->url() . ' ' . 'Timeout - ' . $message);
-            })
-            ->onSuccess(function (Request $request) {
+            } )
+            ->onSuccess( function ( Request $request ) {
                 //                dump($this->url() . ' ' . 'SUCCESS');
-                $this->state()->set(State::FINISHED);
-            })
-            ->onFail(function (Request $request, $reason) {
+                $this->state()->set( State::FINISHED );
+            } )
+            ->onFail( function ( Request $request, $reason ) {
                 $this->tries()->increment();
                 //                dump($this->url() . ' ' . 'fail triggered - ' . $reason->getMessage());
 
-                if ($this->tries()->exceeded()) {
-                    $this->callbacks()->trigger(RequestCallbacks::LAST_FAIL, $reason);
+                if ( $this->tries()->exceeded() ) {
+                    $this->callbacks()->trigger( RequestCallbacks::LAST_FAIL, $reason );
                 }
-            })
-            ->onLastFail(function (Request $request, $reason) {
+            } )
+            ->onLastFail( function ( Request $request, $reason ) {
                 //                dump( $this->url() . ' ' . 'last fail triggered', $this->url() );
-                $this->state()->set(State::FINISHED);
-            })
-            ->onHeaders(function (Request $request, $guzzleResponse) {
+                $this->state()->set( State::FINISHED );
+            } )
+            ->onHeaders( function ( Request $request, $guzzleResponse ) {
                 //                dd(( new Response($guzzleResponse) )->body());
                 //                dump( $this->url() . ' ' . 'headers loaded' );
-            })
+            } )
             /**/
             /**/
         ;
