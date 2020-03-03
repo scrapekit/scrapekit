@@ -42,5 +42,12 @@
         "phpunit/phpunit": "8.*",
         "squizlabs/php_codesniffer": "^3.5",
         "wanfeiyy/dd": "^1.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ScrapeKit\\ScrapeKit\\ScrapeKitServiceProvider"
+            ]
+        }
     }
 }
